@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Clock, AlertTriangle } from 'lucide-react'
+import { Clock, AlertTriangle, CheckCircle, SkipForward } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+
+
 
 // Mock questions data
 const questions = [
@@ -20,25 +23,18 @@ const questions = [
 ]
 
 export default function ExamInterface() {
+  
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState({})
+  const [savedAnswers, setSavedAnswers] = useState({})
+  const [skippedQuestions, setSkippedQuestions] = useState(new Set())
   const [timeLeft, setTimeLeft] = useState(3600) // 1 hour in seconds
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
   const [warningMessage, setWarningMessage] = useState('')
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false)
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen()
-      setIsFullscreen(true)
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-        setIsFullscreen(false)
-      }
-    }
-  }
+
+  const router = useRouter();
 
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden) {
@@ -55,18 +51,20 @@ export default function ExamInterface() {
   }, [handleVisibilityChange])
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          clearInterval(timer)
-          handleSubmitExam()
-          return 0
-        }
-        return prevTime - 1
-      })
-    }, 1000)
+    
+      const timer = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(timer)
+            handleSubmitExam()
+            return 0
+          }
+          return prevTime - 1
+        })
+      }, 1000)
 
-    return () => clearInterval(timer)
+      return () => clearInterval(timer)
+    
   }, [])
 
   const handleAnswer = (questionId, answer) => {
@@ -82,18 +80,60 @@ export default function ExamInterface() {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
-  const handleWarning = () => {
-    setShowWarning(false)
-    toggleFullscreen()
+  const handleSubmitExam = () => {
+    // Here you would typically send the answers to your backend
+    console.log('Submitting exam:', savedAnswers)
+    // For now, we'll just close the confirmation dialog
+    router.push("/submitted")
+    setShowSubmitConfirmation(false)
+    // In a real application, you'd redirect to a results page or show a completion message
   }
 
-  const handleSubmitExam = () => {
-    // send the answers to the backend
-    console.log('Submitting exam:', answers)
-    // For now, we'll just close the confirmation dialog
-    setShowSubmitConfirmation(false)
-    // redirect to a results page or show a completion message
+  
+  const saveAndNext = () => {
+    const currentQuestionId = questions[currentQuestion].id
+    setSavedAnswers((prev) => ({
+      ...prev,
+      [currentQuestionId]: answers[currentQuestionId]
+    }))
+    setSkippedQuestions((prevSkipped) => {
+      const newSkipped = new Set(prevSkipped)
+      newSkipped.delete(currentQuestionId)
+      return newSkipped
+    })
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+    }
   }
+
+  const skipQuestion = () => {
+    setSkippedQuestions((prevSkipped) => new Set(prevSkipped).add(questions[currentQuestion].id))
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+    }
+  }
+
+  const getExamStats = () => {
+    const totalQuestions = questions.length
+    const answeredQuestions = Object.keys(savedAnswers).length
+    const skippedQuestionsCount = skippedQuestions.size
+    const unansweredQuestions = totalQuestions - answeredQuestions - skippedQuestionsCount
+
+    return { totalQuestions, answeredQuestions, skippedQuestionsCount, unansweredQuestions }
+  }
+
+  const acknowledgeWarning = () => {
+    setShowWarning(false)
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err)
+      })
+    }
+  }
+
+  const currentQuestionId = questions[currentQuestion].id
+  const isAnswered = !!answers[currentQuestionId]
+  const isSaved = !!savedAnswers[currentQuestionId]
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -114,10 +154,12 @@ export default function ExamInterface() {
               <Button
                 key={q.id}
                 variant={currentQuestion === index ? "default" : "outline"}
-                className="w-full mb-2 justify-start"
+                className={`w-full mb-2 justify-start  ${savedAnswers[q.id] ? 'bg-green-100 text-black hover:bg-green-200' : ''} ${skippedQuestions.has(q.id) ? 'bg-yellow-100 text-black hover:bg-yellow-200' : ''}`}
                 onClick={() => setCurrentQuestion(index)}
               >
                 Question {index + 1}
+                {savedAnswers[q.id] && <CheckCircle className="ml-2 h-4 w-4" />}
+                {skippedQuestions.has(q.id) && <SkipForward className="ml-2 h-4 w-4" />}
               </Button>
             ))}
           </ScrollArea>
@@ -129,8 +171,8 @@ export default function ExamInterface() {
               <p className="mb-4">{questions[currentQuestion].question}</p>
               {questions[currentQuestion].type === 'mcq' ? (
                 <RadioGroup
-                  value={answers[questions[currentQuestion].id] || ''}
-                  onValueChange={(value) => handleAnswer(questions[currentQuestion].id, value)}
+                  value={answers[currentQuestionId] || ''}
+                  onValueChange={(value) => handleAnswer(currentQuestionId, value)}
                 >
                   {questions[currentQuestion].options.map((option, index) => (
                     <div key={index} className="flex items-center space-x-2">
@@ -141,8 +183,8 @@ export default function ExamInterface() {
                 </RadioGroup>
               ) : (
                 <Textarea
-                  value={answers[questions[currentQuestion].id] || ''}
-                  onChange={(e) => handleAnswer(questions[currentQuestion].id, e.target.value)}
+                  value={answers[currentQuestionId] || ''}
+                  onChange={(e) => handleAnswer(currentQuestionId, e.target.value)}
                   placeholder="Type your answer here..."
                   className="w-full h-40"
                 />
@@ -156,12 +198,14 @@ export default function ExamInterface() {
             >
               Previous
             </Button>
-            <Button
-              onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))}
-              disabled={currentQuestion === questions.length - 1}
-            >
-              Next
-            </Button>
+            <div className="space-x-2">
+              <Button onClick={skipQuestion} variant="outline">
+                Skip
+              </Button>
+              <Button onClick={saveAndNext} disabled={!isAnswered || isSaved}>
+                Save and Next
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -172,7 +216,7 @@ export default function ExamInterface() {
             <AlertDialogDescription>{warningMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleWarning}>Acknowledge</AlertDialogAction>
+            <AlertDialogAction onClick={acknowledgeWarning}>Acknowledge</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -184,6 +228,15 @@ export default function ExamInterface() {
               Are you sure you want to submit your exam? You won't be able to make any changes after submission.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <CardContent>
+            <h3 className="font-semibold mb-2">Exam Statistics:</h3>
+            <ul className="list-disc list-inside">
+              <li>Total Questions: {getExamStats().totalQuestions}</li>
+              <li>Answered Questions: {getExamStats().answeredQuestions}</li>
+              <li>Skipped Questions: {getExamStats().skippedQuestionsCount}</li>
+              <li>Unanswered Questions: {getExamStats().unansweredQuestions}</li>
+            </ul>
+          </CardContent>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setShowSubmitConfirmation(false)}>Cancel</AlertDialogAction>
             <AlertDialogAction onClick={handleSubmitExam} className="bg-destructive text-destructive-foreground">

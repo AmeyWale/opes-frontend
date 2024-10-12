@@ -14,7 +14,7 @@ export default function TeacherAuth() {
   const togglePasswordVisibility = () => setShowPassword(!showPassword)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-4">
+    <div className="pt-14 bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Teacher Portal</CardTitle>
