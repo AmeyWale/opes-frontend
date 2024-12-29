@@ -81,12 +81,14 @@ export default function ExamInterface() {
   }
 
   const handleSubmitExam = () => {
-    // Here you would typically send the answers to your backend
+    // send the answers to the backend
     console.log('Submitting exam:', savedAnswers)
-    // For now, we'll just close the confirmation dialog
+    
     router.push("/submitted")
+
+    // close the popup
     setShowSubmitConfirmation(false)
-    // In a real application, you'd redirect to a results page or show a completion message
+    
   }
 
   

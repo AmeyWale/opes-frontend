@@ -5,13 +5,18 @@ import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+
 import { BookOpen, CheckCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function Component() {
   const [assessmentId, setAssessmentId] = useState('')
 
+  const router = useRouter()
+
   const handleSubmit = (e) => {
     e.preventDefault()
+    router.push("/student-details")
     // Handle the submission logic here
     console.log('Assessment ID submitted:', assessmentId)
   }

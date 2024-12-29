@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast  } from "@/hooks/use-toast"
 import { PlusCircle, Trash2 } from 'lucide-react'
 
 export default function CreateExam() {
@@ -21,7 +21,8 @@ export default function CreateExam() {
   const [examData, setExamData] = useState({
     title: '',
     description: '',
-    duration: 60,
+    startDate: '',
+    endDate: '',
     passingScore: 60,
     randomizeQuestions: false,
     allowBacktracking: true,
@@ -44,8 +45,8 @@ export default function CreateExam() {
 
   const addQuestion = (type) => {
     const newQuestion = type === 'mcq' 
-      ? { type, question: '', options: ['', '', '', ''], correctAnswer: '' }
-      : { type, question: '' }
+      ? { id: Date.now(), type, question: '', options: ['', '', '', ''], correctAnswer: '' }
+      : { id: Date.now(), type, question: '' }
     setExamData(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }))
   }
 
@@ -71,8 +72,7 @@ export default function CreateExam() {
       title: "Exam Created",
       description: "Your exam has been created successfully.",
     })
-    // Redirect to the admin panel or exam list page
-    // router.push('/teacher/admin-panel')
+    router.push('/teacher-admin-panel')
   }
 
   return (
@@ -112,16 +112,26 @@ export default function CreateExam() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (minutes)</Label>
-                  <Slider
-                    id="duration"
-                    min={15}
-                    max={180}
-                    step={15}
-                    value={[examData.duration]}
-                    onValueChange={handleSliderChange('duration')}
+                  <Label htmlFor="startDate">Exam Start Date and Time</Label>
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="datetime-local"
+                    value={examData.startDate}
+                    onChange={handleInputChange}
+                    required
                   />
-                  <div className="text-sm text-gray-500">{examData.duration} minutes</div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">Exam End Date and Time</Label>
+                  <Input
+                    id="endDate"
+                    name="endDate"
+                    type="datetime-local"
+                    value={examData.endDate}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
               </TabsContent>
               <TabsContent value="questions" className="space-y-4">
@@ -134,7 +144,7 @@ export default function CreateExam() {
                   </Button>
                 </div>
                 {examData.questions.map((question, index) => (
-                  <Card key={index}>
+                  <Card key={question.id}>
                     <CardHeader>
                       <CardTitle className="text-lg">Question {index + 1}</CardTitle>
                       <Button
@@ -213,7 +223,9 @@ export default function CreateExam() {
                 </div>
               </TabsContent>
             </Tabs>
-            <Button type="submit" className="w-full">Create Exam</Button>
+            <Button type="submit" className="w-full" disabled={examData.questions.length === 0}>
+              Create Exam
+            </Button>
           </form>
         </CardContent>
       </Card>

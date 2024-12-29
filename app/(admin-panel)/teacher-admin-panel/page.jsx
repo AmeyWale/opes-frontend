@@ -2,16 +2,41 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PlusCircle, Edit, Trash2 } from 'lucide-react'
 
 // Mock data for exams (replace with actual data fetching in a real application)
 const mockExams = [
-  { id: 1, title: 'Mathematics Midterm', date: '2024-03-15', duration: '2 hours' },
-  { id: 2, title: 'Physics Final', date: '2024-05-20', duration: '3 hours' },
-  { id: 3, title: 'Computer Science Quiz', date: '2024-04-10', duration: '1 hour' },
+  { 
+    id: 1, 
+    title: 'Mathematics Midterm', 
+    date: '2024-03-15', 
+    startTime: '09:00', 
+    endTime: '11:00',
+    totalStudents: 50,
+    submittedCount: 48,
+  },
+  { 
+    id: 2, 
+    title: 'Physics Final', 
+    date: '2024-05-20', 
+    startTime: '10:00', 
+    endTime: '13:00',
+    totalStudents: 45,
+    submittedCount: 45,
+  },
+  { 
+    id: 3, 
+    title: 'Computer Science Quiz', 
+    date: '2024-04-10', 
+    startTime: '14:00', 
+    endTime: '15:00',
+    totalStudents: 60,
+    submittedCount: 58,
+  },
 ]
 
 export default function TeacherAdminPanel() {
@@ -19,17 +44,14 @@ export default function TeacherAdminPanel() {
   const [exams, setExams] = useState(mockExams)
 
   const handleCreateExam = () => {
-    // Navigate to exam creation page
-    router.push('/teacher/create-exam')
+    router.push('/create-exam')
   }
 
-  const handleEditExam = (examId)=> {
-    // Navigate to exam edit page
-    router.push(`/teacher/edit-exam/${examId}`)
+  const handleEditExam = (examId) => {
+    router.push(`/edit-exam/${examId}`)
   }
 
   const handleDeleteExam = (examId) => {
-    // In a real application, you would call an API to delete the exam
     setExams(exams.filter(exam => exam.id !== examId))
   }
 
@@ -38,7 +60,7 @@ export default function TeacherAdminPanel() {
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">Teacher Admin Panel</CardTitle>
-          <CardDescription>Manage your exams and create new ones</CardDescription>
+          <CardDescription>Manage your exams and view statistics</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-6">
@@ -52,16 +74,22 @@ export default function TeacherAdminPanel() {
               <TableRow>
                 <TableHead>Exam Title</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Duration</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Submissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {exams.map((exam) => (
                 <TableRow key={exam.id}>
-                  <TableCell className="font-medium">{exam.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/view-exam/${exam.id}`} className="text-blue-600 hover:underline">
+                      {exam.title}
+                    </Link>
+                  </TableCell>
                   <TableCell>{exam.date}</TableCell>
-                  <TableCell>{exam.duration}</TableCell>
+                  <TableCell>{exam.startTime} - {exam.endTime}</TableCell>
+                  <TableCell>{exam.submittedCount}/{exam.totalStudents}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam.id)}>
                       <Edit className="h-4 w-4" />

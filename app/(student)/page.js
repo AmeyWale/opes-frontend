@@ -57,7 +57,7 @@ export default function Home() {
             <Feature
               icon={<BookOpen className="h-6 w-6" />}
               title="Diverse Question Types"
-              description="Support for multiple choice, essay, and coding questions"
+              description="Support for multiple choice, essay coding questions"
             />
             <Feature
               icon={<ArrowRight className="h-6 w-6" />}
