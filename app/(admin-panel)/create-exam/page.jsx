@@ -6,29 +6,31 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { useToast  } from "@/hooks/use-toast"
 import { PlusCircle, Trash2 } from 'lucide-react'
+import { ErrorDialog } from '@/components/Error'
+import Cookies from 'js-cookie'
+
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export default function CreateExam() {
   const router = useRouter()
   const [examData, setExamData] = useState({
     title: '',
     description: '',
-    startDate: '',
-    endDate: '',
+    startTime: '',
+    endTime: '',
     passingScore: 60,
-    randomizeQuestions: false,
-    allowBacktracking: true,
-    showResults: true,
+    randomizeQuestionSequence: false,
+    showResult: true,
     questions: []
   })
+  const [error, setError] = useState()
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -66,13 +68,30 @@ export default function CreateExam() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // Here you would typically send the exam data to your backend
-    console.log(examData)
-    useToast({
-      title: "Exam Created",
-      description: "Your exam has been created successfully.",
-    })
-    router.push('/teacher-admin-panel')
+    console.log(examData);
+    
+    try {
+     
+      const response = await fetch(`${BACKEND_URL}/api/exams/create`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'authorization':`Bearer ${Cookies.get("token")}`
+         },
+        body: JSON.stringify(examData),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error('Failed to create exam. Please try again. ', data.message)
+      }
+
+      console.log(data)
+      
+      router.push('/teacher-admin-panel')
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   return (
@@ -112,23 +131,23 @@ export default function CreateExam() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Exam Start Date and Time</Label>
+                  <Label htmlFor="startTime">Exam Start Date and Time</Label>
                   <Input
-                    id="startDate"
-                    name="startDate"
+                    id="startTime"
+                    name="startTime"
                     type="datetime-local"
-                    value={examData.startDate}
+                    value={examData.startTime}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Exam End Date and Time</Label>
+                  <Label htmlFor="endTime">Exam End Date and Time</Label>
                   <Input
-                    id="endDate"
-                    name="endDate"
+                    id="endTime"
+                    name="endTime"
                     type="datetime-local"
-                    value={examData.endDate}
+                    value={examData.endTime}
                     onChange={handleInputChange}
                     required
                   />
@@ -145,13 +164,14 @@ export default function CreateExam() {
                 </div>
                 {examData.questions.map((question, index) => (
                   <Card key={question.id}>
-                    <CardHeader>
+                    <CardHeader className="relative">
                       <CardTitle className="text-lg">Question {index + 1}</CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => removeQuestion(index)}
                         className="absolute top-2 right-2"
+                        aria-label={`Delete question ${index + 1}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -194,19 +214,19 @@ export default function CreateExam() {
               </TabsContent>
               <TabsContent value="settings" className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="randomizeQuestions">Randomize Questions</Label>
+                  <Label htmlFor="randomizeQuestionSequence">Randomize Questions</Label>
                   <Switch
-                    id="randomizeQuestions"
-                    checked={examData.randomizeQuestions}
-                    onCheckedChange={handleSwitchChange('randomizeQuestions')}
+                    id="randomizeQuestionSequence"
+                    checked={examData.randomizeQuestionSequence}
+                    onCheckedChange={handleSwitchChange('randomizeQuestionSequence')}
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="showResults">Show Results Immediately</Label>
+                  <Label htmlFor="showResult">Show Results Immediately</Label>
                   <Switch
-                    id="showResults"
-                    checked={examData.showResults}
-                    onCheckedChange={handleSwitchChange('showResults')}
+                    id="showResult"
+                    checked={examData.showResult}
+                    onCheckedChange={handleSwitchChange('showResult')}
                   />
                 </div>
                 <div className="space-y-2">
@@ -229,6 +249,7 @@ export default function CreateExam() {
           </form>
         </CardContent>
       </Card>
+      <ErrorDialog error={error} onClose={() => setError(null)} />
     </div>
   )
 }

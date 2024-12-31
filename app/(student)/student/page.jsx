@@ -8,16 +8,40 @@ import { Label } from "@/components/ui/label"
 
 import { BookOpen, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { ErrorDialog } from '@/components/Error'
+import Cookies from 'js-cookie'
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
 export default function Component() {
+
+  const [error, setError] = useState()
   const [assessmentId, setAssessmentId] = useState('')
 
   const router = useRouter()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    router.push("/student-details")
-    // Handle the submission logic here
+
+    try {
+      let response = await fetch(`${BACKEND_URL}/api/exams/${assessmentId}`,{
+        headers: { 
+          'authorization':`Bearer ${Cookies.get("token")}`
+        },
+      })
+
+      let data = await response.json()
+
+      if (!response.ok){
+        throw new Error(data.message);
+      }
+      localStorage.setItem("exam",JSON.stringify(data))
+      router.push("/student-details")
+
+    } catch (error) {
+      setError(error)
+    }
+
     console.log('Assessment ID submitted:', assessmentId)
   }
 
@@ -101,6 +125,7 @@ export default function Component() {
             className="rounded-lg shadow-md"
           />
         </div>
+        <ErrorDialog error={error} onClose={() => setError(null)} />
       </div>
     </>
   )

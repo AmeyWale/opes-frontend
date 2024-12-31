@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -11,19 +11,22 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Clock, AlertTriangle, CheckCircle, SkipForward } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-
-
 // Mock questions data
-const questions = [
-  { id: 1, type: 'mcq', question: 'What is the capital of France?', options: ['London', 'Berlin', 'Paris', 'Madrid'], correctAnswer: 'Paris' },
-  { id: 2, type: 'descriptive', question: 'Explain the process of photosynthesis.' },
-  { id: 3, type: 'mcq', question: 'Which planet is known as the Red Planet?', options: ['Venus', 'Mars', 'Jupiter', 'Saturn'], correctAnswer: 'Mars' },
-  { id: 4, type: 'descriptive', question: 'Describe the main themes in Shakespeare\'s "Hamlet".' },
-  // Add more questions as needed
-]
+// const questions = [
+//   { id: 1, type: 'mcq', question: 'What is the capital of France?', options: ['London', 'Berlin', 'Paris', 'Madrid'], correctAnswer: 'Paris' },
+//   { id: 2, type: 'descriptive', question: 'Explain the process of photosynthesis.' },
+//   { id: 3, type: 'mcq', question: 'Which planet is known as the Red Planet?', options: ['Venus', 'Mars', 'Jupiter', 'Saturn'], correctAnswer: 'Mars' },
+//   { id: 4, type: 'descriptive', question: 'Describe the main themes in Shakespeare\'s "Hamlet".' },
+  
+// ]
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export default function ExamInterface() {
   
+
+  const questions = JSON.parse(localStorage.getItem("exam")).questions;
+
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState({})
   const [savedAnswers, setSavedAnswers] = useState({})
@@ -33,8 +36,10 @@ export default function ExamInterface() {
   const [warningMessage, setWarningMessage] = useState('')
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false)
 
-
   const router = useRouter();
+
+  const canvasRef = useRef()
+  const videoRef = useRef()
 
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden) {
@@ -67,6 +72,67 @@ export default function ExamInterface() {
     
   }, [])
 
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+    } catch (err) {
+      setError(new Error("Failed to access camera. Please ensure you have given permission and your camera is working."))
+    }
+  }
+
+  const stopCamera = () => {
+    const stream = videoRef.current?.srcObject
+    const tracks = stream?.getTracks() || []
+    tracks.forEach(track => track.stop())
+    console.log("hello ???");
+    
+  }
+  
+  const captureAndSendFrame = () => {
+    
+    if (canvasRef.current && videoRef.current) {
+      const context = canvasRef.current.getContext('2d')
+      if (context) {
+        context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height)
+        const base64Frame = canvasRef.current.toDataURL('image/jpeg')
+        sendFrameToBackend(base64Frame)
+      }
+    }
+  }
+
+
+  const sendFrameToBackend = async (base64Image) => {
+    
+    try {
+      const response = await fetch('http://localhost:3003/proctoring/feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frame: base64Image }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to send frame to backend')
+      }
+      // Handle the response if needed
+    } catch (err) {
+      console.error(err)
+      
+      // setIsSendingFrames(false)
+    }
+  }
+
+  useEffect(() => {
+    startCamera()
+    const intervalId = setInterval(captureAndSendFrame,2500)
+    return () => {
+      clearInterval(intervalId)
+      stopCamera()
+    }
+  }, [])
+
+
   const handleAnswer = (questionId, answer) => {
     setAnswers((prevAnswers) => ({
       ...prevAnswers,
@@ -80,11 +146,42 @@ export default function ExamInterface() {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
-  const handleSubmitExam = () => {
+  const handleSubmitExam = async () => {
     // send the answers to the backend
     console.log('Submitting exam:', savedAnswers)
+    let assessmentId = JSON.parse(localStorage.getItem("exam")).assessmentId
+    let uniqueId = JSON.parse(localStorage.getItem("student")).uniqueId
+
+    const payload = {
+      assessmentId,
+      uniqueId,
+      answers:savedAnswers
+    }
+    try {
+      console.log("$$$$$$");
+      
+      const response = await fetch(`${BACKEND_URL}/api/exams/${assessmentId}/submit`,{
+        method:"POST",
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body:JSON.stringify(payload)
+      })
+      console.log("&&&&&&&");
+      
+      let data = await response.json()
+
+      if (!response.ok){
+        throw new Error(data.message);
+      }
+      console.log(data);
+      stopCamera()
+      router.push("/submitted")
+      
+    } catch (error) {
+      console.error(error)
+    }
     
-    router.push("/submitted")
 
     // close the popup
     setShowSubmitConfirmation(false)
@@ -93,7 +190,7 @@ export default function ExamInterface() {
 
   
   const saveAndNext = () => {
-    const currentQuestionId = questions[currentQuestion].id
+    const currentQuestionId = questions[currentQuestion]._id
     setSavedAnswers((prev) => ({
       ...prev,
       [currentQuestionId]: answers[currentQuestionId]
@@ -109,7 +206,7 @@ export default function ExamInterface() {
   }
 
   const skipQuestion = () => {
-    setSkippedQuestions((prevSkipped) => new Set(prevSkipped).add(questions[currentQuestion].id))
+    setSkippedQuestions((prevSkipped) => new Set(prevSkipped).add(questions[currentQuestion]._id))
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
     }
@@ -133,7 +230,7 @@ export default function ExamInterface() {
     }
   }
 
-  const currentQuestionId = questions[currentQuestion].id
+  const currentQuestionId = questions[currentQuestion]._id
   const isAnswered = !!answers[currentQuestionId]
   const isSaved = !!savedAnswers[currentQuestionId]
 
@@ -153,15 +250,16 @@ export default function ExamInterface() {
           <ScrollArea className="h-[calc(100vh-8rem)]">
             <h2 className="font-semibold mb-4">Questions</h2>
             {questions.map((q, index) => (
+              
               <Button
-                key={q.id}
+                key={q._id}
                 variant={currentQuestion === index ? "default" : "outline"}
-                className={`w-full mb-2 justify-start  ${savedAnswers[q.id] ? 'bg-green-100 text-black hover:bg-green-200' : ''} ${skippedQuestions.has(q.id) ? 'bg-yellow-100 text-black hover:bg-yellow-200' : ''}`}
+                className={`w-full mb-2 justify-start  ${savedAnswers[q._id] ? 'bg-green-100 text-black hover:bg-green-200' : ''} ${skippedQuestions.has(q._id) ? 'bg-yellow-100 text-black hover:bg-yellow-200' : ''}`}
                 onClick={() => setCurrentQuestion(index)}
               >
                 Question {index + 1}
-                {savedAnswers[q.id] && <CheckCircle className="ml-2 h-4 w-4" />}
-                {skippedQuestions.has(q.id) && <SkipForward className="ml-2 h-4 w-4" />}
+                {savedAnswers[q._id] && <CheckCircle className="ml-2 h-4 w-4" />}
+                {skippedQuestions.has(q._id) && <SkipForward className="ml-2 h-4 w-4" />}
               </Button>
             ))}
           </ScrollArea>
@@ -247,6 +345,12 @@ export default function ExamInterface() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <div className="absolute bottom-4 right-4 w-32 h-24 bg-gray-200 border-2 border-white rounded overflow-hidden">
+        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+      </div>
+          
+      <canvas ref={canvasRef} className="hidden" width="640" height="480" />
     </div>
   )
 }

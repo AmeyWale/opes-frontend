@@ -13,10 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { useToast  } from "@/hooks/use-toast"
 import { PlusCircle, Trash2, ArrowLeft } from 'lucide-react'
 
-// Mock exam data (replace with actual data fetching in a real application)
+// Mock exam data 
 const mockExam = {
   id: 1,
   title: 'Mathematics Midterm',
@@ -25,7 +24,6 @@ const mockExam = {
   endDate: '2024-03-15T11:00',
   passingScore: 60,
   randomizeQuestions: false,
-  allowBacktracking: true,
   showResults: true,
   questions: [
     { id: 1, type: 'mcq', question: 'What is 2 + 2?', options: ['3', '4', '5', '6'], correctAnswer: '4' },
@@ -39,8 +37,7 @@ export default function EditExam({id}) {
   const [examData, setExamData] = useState(mockExam)
 
   useEffect(() => {
-    // In a real application, fetch the exam data based on the id
-    // For now, we'll use the mock data
+    
     setExamData(mockExam)
   }, [id])
 
@@ -80,13 +77,9 @@ export default function EditExam({id}) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // Here you would typically send the updated exam data to your backend
     console.log(examData)
-    useToast({
-      title: "Exam Updated",
-      description: "Your exam has been updated successfully.",
-    })
-    router.push('/teacher/admin-panel')
+    
+    router.push('/teacher-admin-panel')
   }
 
   return (

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft } from 'lucide-react'
 
-// Mock data for a student's submission (replace with actual data fetching in a real application)
+// Mock data for submission
 const mockSubmission = {
   examId: 1,
   examTitle: 'Mathematics Midterm',
@@ -31,8 +31,6 @@ export default function StudentSubmission({ examId, studentId } ) {
   const [submission, setSubmission] = useState(null)
 
   useEffect(() => {
-    // In a real application, fetch the student's submission based on examId and studentId
-    // For now, we'll use the mock data
     setSubmission(mockSubmission)
   }, [examId, studentId])
 

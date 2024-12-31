@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PlusCircle, Edit, Trash2 } from 'lucide-react'
+import Cookies from 'js-cookie'
+import { formatDateTime } from '@/lib/utils'
 
-// Mock data for exams (replace with actual data fetching in a real application)
+// Mock data for exams 
 const mockExams = [
   { 
     id: 1, 
@@ -39,6 +41,8 @@ const mockExams = [
   },
 ]
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+
 export default function TeacherAdminPanel() {
   const router = useRouter()
   const [exams, setExams] = useState(mockExams)
@@ -54,6 +58,37 @@ export default function TeacherAdminPanel() {
   const handleDeleteExam = (examId) => {
     setExams(exams.filter(exam => exam.id !== examId))
   }
+
+  useEffect(()=>{
+
+    async function fetchExams() {
+      
+      try {
+        
+        let response = await fetch(`${BACKEND_URL}/api/teachers/exams`,{
+          headers: {
+            "Content-Type": "application/json",
+            "authorization": `Bearer ${Cookies.get("token")}`
+          },
+        })
+
+        let data = await response.json()
+
+        if (!response.ok){
+          throw new Error(`HTTP error! Status: ${response.message}`);
+        }
+        console.log(data);
+        
+        setExams(data)
+
+      } catch (error) {
+        console.error("Error fetching exams : ", error)
+      }
+
+    }
+    fetchExams();
+
+  },[])
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -73,28 +108,28 @@ export default function TeacherAdminPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead>Exam Title</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Submissions</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Assessment ID</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {exams.map((exam) => (
-                <TableRow key={exam.id}>
+                <TableRow key={exam._id}>
                   <TableCell className="font-medium">
-                    <Link href={`/view-exam/${exam.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/view-exam/${exam._id}`} className="text-blue-600 hover:underline">
                       {exam.title}
                     </Link>
                   </TableCell>
-                  <TableCell>{exam.date}</TableCell>
-                  <TableCell>{exam.startTime} - {exam.endTime}</TableCell>
-                  <TableCell>{exam.submittedCount}/{exam.totalStudents}</TableCell>
+                  <TableCell>{formatDateTime(exam.startTime)}</TableCell>
+                  <TableCell>{formatDateTime(exam.endTime)}</TableCell>
+                  <TableCell>{exam.assessmentId}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam._id)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExam(exam.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExam(exam._id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>

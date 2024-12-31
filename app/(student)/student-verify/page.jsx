@@ -74,11 +74,9 @@ export default function PreExamVerification() {
         router.push("/exam")
       }).catch((err) => {
         console.error('Error attempting to enable fullscreen:', err)
-        // You might want to show an error message to the user here
       })
     } else {
       // Fallback for browsers that don't support fullscreen
-      
     }
   }
 

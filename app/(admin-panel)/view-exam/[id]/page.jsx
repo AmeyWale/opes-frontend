@@ -21,7 +21,7 @@ const mockExam = {
   averageScore: 78.5
 }
 
-// Mock data for student submissions (replace with actual data fetching in a real application)
+// Mock data for student submissions 
 const mockStudentSubmissions = [
   { id: 1, name: 'Alice Johnson', score: 85, passed: true, submissionTime: '2024-03-15 10:45' },
   { id: 2, name: 'Bob Smith', score: 72, passed: true, submissionTime: '2024-03-15 10:55' },
@@ -29,6 +29,8 @@ const mockStudentSubmissions = [
   { id: 4, name: 'Diana Prince', score: 95, passed: true, submissionTime: '2024-03-15 10:30' },
   { id: 5, name: 'Ethan Hunt', score: 78, passed: true, submissionTime: '2024-03-15 10:50' },
 ]
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
 export default function ExamDetails({id}) {
   
@@ -38,8 +40,17 @@ export default function ExamDetails({id}) {
   const [submissions, setSubmissions] = useState([])
 
   useEffect(() => {
-    // In a real application, fetch the exam details and submissions based on the id
-    // For now, we'll use the mock data
+    
+    async function fetchExamDetails() {
+      try {
+        
+        let response = await fetch(`${BACKEND_URL}/api/exams/${id}`)
+
+      } catch (error) {
+        console.error(error.message)
+      }
+    }
+
     setExam(mockExam)
     setSubmissions(mockStudentSubmissions)
   }, [id])

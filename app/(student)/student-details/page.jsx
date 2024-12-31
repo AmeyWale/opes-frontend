@@ -7,10 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast  } from "@/hooks/use-toast"
+import { ErrorDialog } from '@/components/Error'
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
 export default function StudentRegistration() {
   const router = useRouter()
+
+  const [error, setError] = useState()
+
   const [formData, setFormData] = useState({
     uniqueId: "",
     name: "",
@@ -33,14 +38,31 @@ export default function StudentRegistration() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // Here you would typically send the form data to your backend
-    console.log(formData)
-    useToast({
-      title: "Registration Successful",
-      description: "Your details have been submitted successfully.",
-    })
-    // Redirect to another page after successful registration
-    router.push('/student-verify')
+    
+    let payload = {...formData};
+
+    let examData = JSON.parse(localStorage.getItem("exam"))
+    payload.assessmentId = examData.assessmentId
+    
+    try {
+      let response = await fetch(`${BACKEND_URL}/api/students/register`,{
+        method:"POST",
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body:JSON.stringify(payload)
+      })
+
+      let data = await response.json()
+
+      if (!response.ok){
+        throw new Error(data.message);
+      }
+      localStorage.setItem("student",JSON.stringify(data.data))
+      router.push('/student-verify')
+    } catch (error) {
+      setError(error)
+    }    
   }
 
   return (
@@ -150,6 +172,7 @@ export default function StudentRegistration() {
           </form>
         </CardContent>
       </Card>
+      <ErrorDialog error={error} onClose={() => setError(null)} />
     </div>
   )
 }

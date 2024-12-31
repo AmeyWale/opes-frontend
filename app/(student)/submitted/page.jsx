@@ -1,7 +1,18 @@
-
+"use client";
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 export default function ConfirmationPage() {
+
+  useEffect(()=>{
+    async function stopTracking() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+    stopTracking()
+  },[])
+
   return (
     <div className="flex items-center justify-center mt-10 ">
       <div className="bg-white p-8 rounded-lg shadow-lg text-center">
