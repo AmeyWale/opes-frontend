@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft } from 'lucide-react'
+import Cookies from 'js-cookie'
+import { formatDateTime } from '@/lib/utils'
 
 // Mock data for an exam (replace with actual data fetching in a real application)
 const mockExam = { 
@@ -32,28 +34,74 @@ const mockStudentSubmissions = [
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
-export default function ExamDetails({id}) {
+export default function ExamDetails({params}) {
   
-    const router = useRouter();
-
+  const router = useRouter();
   const [exam, setExam] = useState(null)
   const [submissions, setSubmissions] = useState([])
-
+  
+  const id = params.id;
+  console.log(id);
+  
   useEffect(() => {
     
     async function fetchExamDetails() {
       try {
         
-        let response = await fetch(`${BACKEND_URL}/api/exams/${id}`)
+        let response = await fetch(`${BACKEND_URL}/api/exams/analytics/${id}`,
+          { 
+            headers:{
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Cookies.get("token")}`
+            }
+          }
+        )
+        const data = await response.json();
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${data.message}`);
+        }
+
+        console.log(data);
+        setExam(data)
+        
       } catch (error) {
         console.error(error.message)
       }
     }
-
-    setExam(mockExam)
-    setSubmissions(mockStudentSubmissions)
+    fetchExamDetails()
+    // setExam(mockExam)
+    // setSubmissions(mockStudentSubmissions)
   }, [id])
+
+  function handleDownloadCSV() {
+    if (!exam?.submissions?.length) return;
+
+    const headers = ["Unique Id", "Phone Number", "Name", "Score", "Status", "Submission Time"];
+    const rows = exam.submissions.map(sub => [
+      sub.uniqueId,
+      sub.phone,
+      sub.name,
+      sub.score,
+      sub.status,
+      formatDateTime(sub.submissionTime)
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${exam.examInfo.title.replace(/\s+/g, "_")}_submissions.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
 
   if (!exam) {
     return <div>Loading...</div>
@@ -69,7 +117,7 @@ export default function ExamDetails({id}) {
           <CardHeader>
             <CardTitle className="text-2xl">{exam.title}</CardTitle>
             <CardDescription>
-              Date: {exam.date} | Time: {exam.startTime} - {exam.endTime}
+              From: {formatDateTime(exam.examInfo.startTime)} To: {formatDateTime(exam.examInfo.endTime)}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -79,10 +127,10 @@ export default function ExamDetails({id}) {
                   <CardTitle>Exam Statistics</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>Total Students: {exam.totalStudents}</p>
-                  <p>Submissions: {exam.submittedCount}</p>
-                  <p>Passed: {exam.passedCount}</p>
-                  <p>Average Score: {exam.averageScore.toFixed(2)}%</p>
+                  <p>Total Students: {exam.statistics.totalStudents}</p>
+                  <p>Submissions: {exam.statistics.totalSubmissions}</p>
+                  <p>Passed: {exam.statistics.passedStudents}</p>
+                  <p>Average Score: {exam.statistics.averageScore} </p>
                 </CardContent>
               </Card>
               <Card>
@@ -90,19 +138,26 @@ export default function ExamDetails({id}) {
                   <CardTitle>Quick Overview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>Submission Rate: {((exam.submittedCount / exam.totalStudents) * 100).toFixed(2)}%</p>
-                  <p>Pass Rate: {((exam.passedCount / exam.submittedCount) * 100).toFixed(2)}%</p>
+                  <p>Submission Rate: {exam.overview.submissionRate}</p>
+                  <p>Pass Rate: {exam.overview.passRate}</p>
                 </CardContent>
               </Card>
             </div>
             <Card>
               <CardHeader>
+              <div className="flex justify-between items-center">
                 <CardTitle>Student Submissions</CardTitle>
-              </CardHeader>
+                <Button onClick={handleDownloadCSV} variant="outline" className="text-sm">
+                  Download CSV
+                </Button>
+              </div>
+            </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Unique Id</TableHead>
+                      <TableHead>Phone Number</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Score</TableHead>
                       <TableHead>Status</TableHead>
@@ -110,16 +165,18 @@ export default function ExamDetails({id}) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {submissions.map((submission) => (
+                    {exam.submissions.map((submission) => (
                       <TableRow key={submission.id}>
+                        <TableCell>{submission.uniqueId}</TableCell>
+                        <TableCell>{submission.phone}</TableCell>
                         <TableCell>
-                          <Link href={`/student-submission/${exam.id}/${submission.id}`} className="text-blue-600 hover:underline">
+                          <Link href={`/student-submission/${id}/${submission.id}`} className="text-blue-600 hover:underline">
                             {submission.name}
                           </Link>
                         </TableCell>
-                        <TableCell>{submission.score}%</TableCell>
-                        <TableCell>{submission.passed ? 'Passed' : 'Failed'}</TableCell>
-                        <TableCell>{submission.submissionTime}</TableCell>
+                        <TableCell>{submission.score}</TableCell>
+                        <TableCell>{submission.status}</TableCell>
+                        <TableCell>{formatDateTime(submission.submissionTime)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
